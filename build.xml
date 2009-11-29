@@ -1,0 +1,102 @@
+<project name="testservlet" default="clojure.compile" basedir=".">
+
+  <!--
+     The build.properties file should contain the following:
+       * catalina.home
+       * manager.username
+       * manager.password
+       * clojure.jar
+  -->
+
+  <property file="build.properties"/>
+
+  <property name="app.name"      value="testservlet"/>
+  <property name="app.path"      value="/${app.name}"/>
+  <property name="app.version"   value="0.1-dev"/>
+  <property name="build.home"    value="${basedir}/build"/>
+  <property name="build.classes" value="${build.home}/WEB-INF/classes"/>
+  <property name="dist.home"     value="${basedir}/dist"/>
+  <property name="manager.url"   value="http://localhost:8080/manager"/>
+  <property name="src.home"      value="${basedir}/src"/>
+  <property name="web.home"      value="${basedir}/web"/>
+
+  <path id="compile.classpath">
+    <pathelement location="${clojure.jar}"/>
+    <fileset dir="${catalina.home}/bin">
+      <include name="*.jar"/>
+    </fileset>
+    <pathelement location="${catalina.home}/lib"/>
+    <fileset dir="${catalina.home}/lib">
+      <include name="*.jar"/>
+    </fileset>
+    <pathelement location="${src.home}"/>
+    <pathelement location="${build.classes}"/>
+  </path>
+
+  <taskdef resource="org/apache/catalina/ant/catalina.tasks"
+           classpathref="compile.classpath"/>
+
+  <target name="prepare">
+    <tstamp/>
+    <mkdir dir="${build.home}"/>
+    <mkdir dir="${build.home}/WEB-INF"/>
+    <copy todir="${build.home}">
+      <fileset dir="${web.home}"/>
+    </copy>
+    <mkdir dir="${build.home}/WEB-INF/lib"/>
+    <copy todir="${build.home}/WEB-INF/lib" file="${clojure.jar}"/>
+  </target>
+
+  <target name="clojure.compile" depends="prepare">
+    <mkdir dir="${build.classes}"/>
+    <java classname="clojure.lang.Compile" classpathref="compile.classpath">
+      <sysproperty key="clojure.compile.path" value="${build.classes}"/>
+      <arg value="com.fightcodeentropy.TestServlet"/>
+    </java>
+  </target>
+
+  <target name="dist" depends="clojure.compile" description="Create binary distribution">
+    <mkdir dir="${dist.home}"/>
+    <jar jarfile="${dist.home}/${app.name}-${app.version}.war"
+         basedir="${build.home}"/>
+  </target>
+
+  <target name="clean" description="clean up" >
+    <delete dir="${build.home}"/>
+    <delete dir="${dist.home}"/>
+  </target>
+
+  <target name="all" depends="clean,clojure.compile" description="Clean build and dist directories, then clojure.compile"/>
+
+  <target name="install" depends="clojure.compile" description="Install application to servlet container">
+    <deploy url="${manager.url}"
+            username="${manager.username}"
+            password="${manager.password}"
+            path="${app.path}"
+            localWar="file://${build.home}"/>
+  </target>
+
+  <target name="list"
+          description="List installed applications on servlet container">
+    <list url="${manager.url}"
+          username="${manager.username}"
+          password="${manager.password}"/>
+  </target>
+
+  <target name="reload" depends="clojure.compile"
+          description="Reload application on servlet container">
+    <reload url="${manager.url}"
+            username="${manager.username}"
+            password="${manager.password}"
+            path="${app.path}"/>
+  </target>
+
+  <target name="remove"
+          description="Remove application on servlet container">
+    <undeploy url="${manager.url}"
+              username="${manager.username}"
+              password="${manager.password}"
+              path="${app.path}"/>
+  </target>
+
+</project>
